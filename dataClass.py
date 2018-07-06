@@ -88,7 +88,3 @@ class dataClass:
     def outputArray(self):
         pass
     
-    
-    def splitData(self):
-    #sort out which data is used as training, test and validation
-        pass
