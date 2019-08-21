@@ -1,90 +1,141 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jun 14 12:23:30 2019
+
+@author: Mike
+"""
 import pandas as pd
+import h5py    
+import datetime
+import tables
 
-class dataClass:
+
+class dataClass(object):
     
-    
-    def __init__(self):
-        print("New inputdata container initialised")
-        cols=['On_Off', 'Pair', 'Timeframe', 'Property', 'Normalisation']  
-        self.inputArray=pd.DataFrame(columns=cols)
-#        self.inputArray = self.inputArray()
-
-    def setSpec(self, **kwargs):
-#        tempSeries=pd.DataFrame(kwargs)
-#        new_df = pd.DataFrame.from_dict(kwargs)
-
-        self.inputArray=self.inputArray.append(kwargs, ignore_index=True)
-
-#        print(self.inputArray)
+    def __init__(self, config, instrument):
+        self.config=config
+        self.instrument=instrument
+        self.timestamp=datetime.date.today()
+        self.timestampstr =datetime.datetime.now().strftime("%d-%m-%Y")
         
         
-    def setNewSpec(self, inputList):
-#        tempSeries=pd.DataFrame(kwargs)
-#        new_df = pd.DataFrame.from_dict(kwargs)
-        cols=['On_Off', 'Pair', 'Timeframe', 'Property', 'Normalisation']  
-        self.inputArray=pd.DataFrame(inputList)
-        self.inputArray=self.inputArray[cols]
-#        print(self.inputArray)
+        if config.is_backTest==False:
+            try:
+                path=self.instrument+"_"+'_'+self.timestampstr+'.h5'
+                self.df=pd.read_hdf(path)
+                timeIndex=self.df.index
+                self.dtime=timeIndex.to_frame(index=False)
+                
         
-    def defaultInputSpec(self):
+            except:        
+                self.df = pd.DataFrame(columns=['Instrument','Ask', 'Bid', 'Spread'])
+                self.dtime=pd.DataFrame(columns=['Time'])
+
+
+        if config.is_backTest==True:
+                self.df = pd.DataFrame(columns=['Instrument','Ask', 'Bid', 'Spread'])
+                self.dtime=pd.DataFrame(columns=['Time'])
+            
+            
+        self.savecount=100
+
+
+
+
+    def storeData(self,event):
+        if event.type=='TICK':
+            self.ask=(event.ask)
+            self.bid=(event.bid)
+            self.time=event.time
+            self.instrument=event.instrument
+            self.spread=(self.ask)-(self.bid)
+            dict_time={'Time':self.time}
+            dict={'Instrument':self.instrument, 'Ask':self.ask, 'Bid':self.bid, 'Spread':self.spread}
+            self.df=self.df.append(dict,ignore_index=True)
+            self.dtime=self.dtime.append(dict_time,ignore_index=True)
+            self.dtime['Time']=pd.to_datetime(self.dtime['Time'], utc=True)
+            self.df.index=self.dtime['Time']
+            
+
+
+            count=len(self.df.index)            
+
+
+
+            #Stores tick data to file every specified (savecount) number of ticks
+            if count % self.savecount == 0 and self.config.is_backTest==False:                
+                path=self.instrument+"_"+'_'+self.timestampstr+'.h5'
+                self.df.to_hdf(path,'df',mode='w',table=True)
+                print('done')
+                
+                #This section checks the current date against that of when the Data object was created
+                    #if the object is found to enter a new day, a new object + file will be created
+                if  self.timestamp < datetime.date.today():
+                    self.__init__(self.config,self.instrument)
+            
+            
+            
+
         
-        inputDictList=[]
-        inputDict={"On_Off": "1", "Pair": "EUR_USD", "Timeframe":"15M", "Property": "close", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"15M", "Property": "open", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"15M", "Property": "high", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"15M", "Property": "low", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"5M", "Property": "close", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"5M", "Property": "open", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"5M", "Property": "high", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"5M", "Property": "low", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)    
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"1H", "Property": "close", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"1H", "Property": "open", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"1H", "Property": "high", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
-        inputDict={"On_Off": "1", "Pair": "EUR_USD","Timeframe":"1H", "Property": "low", "Normalisation": "tanh"}
-        inputDictList.append(inputDict)
+        
+        
+        
+        
+        
+    def loadHistoricData(self):
+        
+        print()
+        
+        
+    def getPartialhistory(self,config, n):
+        a=self.currency
+        b="S5"
+        #n=1
+#        t=time.time()s
+        
+        api = config.create_context()
+#        storeCandles=[]
+#        A1=datetime.now()
+        storeDict=[]
+        candles=[]
+        ii=0
+        while ii<n:
+                kwargs = {}
+                kwargs["granularity"] = b
+                kwargs["count"] = 5000
+           
+                if ii>0:
+                    kwargs["toTime"] = candles[0].time
+                while True:
+                    try:
+                        response = api.instrument.candles(a, **kwargs)
+                        candles = response.get("candles", 200)
+                        break
+                    except:
+                     time.sleep(2)
+                     print("error")
+            #        time.sleep(0.5)
+                if candles != []:
+                    for jj in range(0,len(candles)):
+                        temp1=vars(candles[jj].mid)
+                        temp2={"volume":candles[jj].volume}
+                        temp3={"time":datetime.strptime(candles[jj].time,"%Y-%m-%dT%H:%M:%S.000000000Z")}
+                        dict1={**temp1, **temp2, **temp3}
+                        storeDict.append(dict1)
+        
+        #            storeCandles.append(candles)
+                    print(ii)
+                    ii=ii+1
 
-        #neural networks will be needed for each timeframe
-        self.unique_values = set(e['Timeframe'] for e in inputDictList)
-        print(unique_values)
-        self.numUnique=len(unique_values)
-        print(numUnique)
-        self.setNewSpec(inputDictList)
-
-
-    def getInputdata(self):
-    #need someway of finding what pairs are currency in the input dict 
-    #and generating priceClass object for each of these, this object should also be used in
-    #the target data so the times match (can use through harddrive)
-    
-    #save the inputdata as a object which can be passed to the output class constructer
-    #Based on unique values obtained previously
-        self.inputData[0]=priceClass("EUR_GBP")
-    
-        pass
-    
-    def clearInputdata(self):
-        self.inputData[0]=None
-        pass
-
-    def calcIndicators(self):
-    #This method calculates the indicators
-        pass
-    
-    def constructInputArray(self):
-    #piece together all the bits to tick off inputDictList
-        pass
-    
-    def outputArray(self):
-        pass
-    
+        
+        candles=None
+        tempseries=pd.DataFrame(storeDict)
+        storeDict=None
+        tempseries=tempseries.astype({"time":datetime})
+        tempseries=tempseries.set_index('time')
+#        elapsed = time.time() - t
+        tempseries=tempseries.sort_index()
+        self.timeseries=tempseries
+            
+            
+            

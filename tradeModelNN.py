@@ -34,7 +34,7 @@ class tradeModelNN:
     
     #parameters incude, nodes,layers, buy/sell threshold - any others?
     def optimiseParameters(self):
-        self.optimiseMode=0
+        self.optimiseMode=1
         
         #defineparmeter kwarg
         

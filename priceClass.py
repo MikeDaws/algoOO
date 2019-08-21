@@ -52,8 +52,8 @@ class priceClass:
         
         parser = argparse.ArgumentParser()
         common.config.add_argument(parser)
-        args = parser.parse_args()
         api = args.config.create_context()
+        args = parser.parse_args()
 #        storeCandles=[]
 #        A1=datetime.now()
         kwargs={}
@@ -95,8 +95,8 @@ class priceClass:
                         storeDict.append(dict1)
         
         #            storeCandles.append(candles)
-                    print(ii)
-                    ii=ii+1
+                print(ii)
+                ii=ii+1
 #                timeStamp=self.timeseries.index.max()
 #                fromTime=timeStamp.to_pydatetime()
                 fromTime=datetime.strptime(candles[-1].time,"%Y-%m-%dT%H:%M:%S.000000000Z")
